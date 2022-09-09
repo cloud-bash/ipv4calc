@@ -7,6 +7,7 @@
 # 2nd argument [$2]= subnet mask
 target="$1 $2"
 network=0
+#
 
 # for i in ${filenamearray[@]}; do
 #   [[ "$i" =~ (${user})([0-9]+) ]]
