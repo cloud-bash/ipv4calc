@@ -5,23 +5,10 @@
 # To run the script, the syntax should be: ./ipv4calc.sh [IP address] [subnet mask]
 # 1st argument [$1] = IP address
 # 2nd argument [$2]= subnet mask
-[[ "$2" =~ ([0-9]+).([0-9]+).([0-9]+).([0-9]+) ]]
 
 target="$1 $2"
-network=0
+network=""
 mask=0
-
-for i in ${BASH_REMATCH[@]}; do
-    if [[ $i == 255 ]]; then
-        (( mask += 8 ))
-        echo $i
-    elif [[ $i > 0 && $i < 255 ]]; then
-        echo interesting
-    elif [[ $i == 0 ]]; then
-        echo "network equals 0"
-    fi
-done
-echo $mask
 
 # break up the IP address into octets
 [[ "$1" =~ ([0-9]+).([0-9]+).([0-9]+).([0-9]+) ]]
@@ -30,7 +17,32 @@ ip2=${BASH_REMATCH[2]}
 ip3=${BASH_REMATCH[3]}
 ip4=${BASH_REMATCH[4]}
 
-# echo $ip4
+ip=($ip1,$ip2,$ip3,$ip4)
+
+echo $ip
+
+# for i in ${filenamearray[@]}; do
+#   [[ "$i" =~ (${user})([0-9]+) ]]
+#   # echo "${BASH_REMATCH[2]}"
+#   filenumberarray+=(${BASH_REMATCH[2]})
+# done
+# get CIDR from subnet mask using regex groups
+[[ "$2" =~ ([0-9]+).([0-9]+).([0-9]+).([0-9]+) ]]
+for i in ${BASH_REMATCH[@]}; do
+    x=0
+    if [[ $i == 255 ]]; then
+        (( mask += 8 ))
+        network+="${ip[count]}."
+        (( x++ ))
+    elif [[ $i > 0 && $i < 255 ]]; then
+        echo interesting
+    elif [[ $i == 0 ]]; then
+        # network+=("0") 
+        echo "network equals 0"
+    fi
+done
+echo $mask
+echo $network
 
 
 # function to process each octet
