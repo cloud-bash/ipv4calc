@@ -12,6 +12,8 @@
 target=()
 # network address for our mystery IP address
 network=()
+# next network address
+next=()
 # will be calculated based on subnet mask
 cidr=0
 # x=octet index counter
@@ -27,11 +29,13 @@ done
 [[ "$2" =~ ([0-9]+).([0-9]+).([0-9]+).([0-9]+) ]]
 # ${arr[@]:s:n}	Retrieve n elements starting at index s
 for i in ${BASH_REMATCH[@]:1:4}; do
-    # if this mask octet is 255,
+    # if this subnet mask octet is 255,
     if [[ $i == 255 ]]; then
         # the network matches our target for this octet
         # append this octet to the network address variable
         network+=("${target[x]}")
+        # append this octet to the next network address variable
+        next+=("${target[x]}")
         # 8 bits added to cidr
         (( cidr+=8 ))
         # increment octet index counter
@@ -46,6 +50,19 @@ for i in ${BASH_REMATCH[@]:1:4}; do
         z=$(( d*m ))
         # add z to network octet list
         network+=("$z")
+        # add z + m -1 to next network octet list
+        (( nz=z+m ))
+        # if nz reaches 256, increment the last octet by one and make this octet 0
+        if [[ $nz == 256 ]]; then
+            # w = index of previous octet
+            (( w=x-1 ))
+            # increment the last octet by one
+            (( next[$w] = ${next[$w]}+1 ))
+            # make this octet 0
+            next+=("0")
+        else
+            next+=("$nz")
+        fi
         # increment octet index counter
         (( x++ ))
         # add correct number of bits for cidr
@@ -76,12 +93,33 @@ for i in ${BASH_REMATCH[@]:1:4}; do
         esac
     elif [[ $i == 0 ]]; then
         network+=("0")
+        next+=("0")
     fi
 done
+
+function increment() {
+        # get octet index from cidr
+        (( i = cidr * 4 / 32 - 1 ))
+        # increment this octet for correct next network address
+        (( next[$i]++ ))
+}
+
+# for /8,/16,/24 increment the respective octet to find the next network address
+case $cidr in
+    "24")
+        increment
+    ;;
+    "16")
+        increment
+    ;;
+    "8")
+        increment
+    ;;
+esac
 echo "Target Address: ${target[@]}"
 echo "CIDR: /"$cidr
 echo "Network Address: ${network[@]}"
 echo "First Host Address: ${network[@]:0:3} $(( ${network[3]}+1 ))"
 # echo "Last Host Address: $network"
 # echo "Broadcast Address: $network"
-# echo "Next Network Address: $network"
+echo "Next Network Address: ${next[@]}"
