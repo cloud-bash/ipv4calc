@@ -35,22 +35,22 @@ done
 [[ "$2" =~ ([0-9]+).([0-9]+).([0-9]+).([0-9]+) ]]
 # ${arr[@]:s:n}	Retrieve n elements starting at index s
 for i in ${BASH_REMATCH[@]:1:4}; do
+# For the current octet: derive the network, broadcast and next network addresses
     mask+=("$i")
-    # if this subnet mask octet is 255,
     if [[ $i == 255 ]]; then
-        # the network matches our target for this octet
-        # append this octet to the network address variable
+     # if this subnet mask octet is 255,
+        # the 'network' matches our 'target' for this octet
         network+=("${target[x]}")
-        # append this octet to the next network address variable
-        next+=("${target[x]}")
-        # append this octet to the broadcast address variable
+        # the 'broadcast' matches our 'target' for this octet
         broadcast+=("${target[x]}")
-        # 8 bits added to cidr
+        # the next network address will not change unless incremented later
+        next+=("${target[x]}")
+        # 8 bits added to cidr because it's 255 for this octet
         (( cidr+=8 ))
         # increment octet index counter
         (( x++ ))
-        # if the current subnet mask octet we're iterating over is not equal to 0 or 255...
     elif [[ $i > 0 && $i < 255 ]]; then
+    # else if the current octet is between 0 or 255
         # m - magic number
         (( m=256-i ))
         # bash will use floored division automatically bc integer data type
@@ -63,14 +63,41 @@ for i in ${BASH_REMATCH[@]:1:4}; do
         # then the network value plus the magic number gives us our "next-network" octet value
         # add z + m to next network octet list
         (( nz=z+m ))
+        broadcast+=("$(( nz-1 ))")
+        case $x in
+            "1")
+            broadcast+=("255 255")
+            ;;
+            "2")
+            broadcast+=("255")
+            lasthost+=(${broadcast[@]:0:3} $(( broadcast[3]-1 )))
+            ;;
+            "3")
+            lasthost+=(${broadcast[@]:0:3} $(( broadcast[3]-1 )))
+            ;;
+        esac
         # if nz reaches 256, increment the last octet by one and make this octet 0
         if [[ $nz == 256 ]]; then
             # this octet becomes 0
             (( next[$x] = 0 ))
             # w = index of previous octet
-            (( w=x-2 ))
+            (( w=x-1 ))
             # increment the previous octet by one
-            (( next[$w] = ${next[$w]}+1 ))
+            (( next[$w]++ ))
+            if [[ ${next[$w]} == 256 ]]; then
+                (( next[$w] = 0 ))
+                # w = index of previous octet
+                (( w-- ))
+                # increment the previous octet by one
+                (( next[$w]++ ))
+                if [[ ${next[$w]} == 256 ]]; then
+                    (( next[$w] = 0 ))
+                    # w = index of previous octet
+                    (( w-- ))
+                    # increment the previous octet by one
+                    (( next[$w]++ ))
+                fi    
+            fi
             # make this octet 0
             (( next[$w+1] = 0 ))
         else
@@ -82,6 +109,7 @@ for i in ${BASH_REMATCH[@]:1:4}; do
         # 128, 192, 224, 240, 248, 252, 254
         # oct - 128 > 0 then cidr+=1...etc.
         case $i in
+        # TODO: Implement bitwise operator to derive cidr?
             "128")
                 (( cidr+=1 ))
                 ;;
@@ -121,7 +149,6 @@ function increment() {
             # current octet becomes 0
             (( next[$i]=0 ))
         fi
-        echo ${next[0]}
 }
 
 # for /8,/16,/24 increment the respective octet to find the next network address
@@ -149,11 +176,11 @@ case $cidr in
     ;;
 esac
 
-echo "Target Address: ${target[@]}"
-echo "Subnet mask: ${mask[@]}"
-echo "CIDR: /"$cidr
-echo "Network Address: ${network[@]}"
-echo "First Host Address: ${network[@]:0:3} $(( ${network[3]}+1 ))"
-echo "Last Host Address: ${lasthost[@]}"
-echo "Broadcast Address: ${broadcast[@]}"
-echo "Next Network Address: ${next[@]}"
+echo """Target       : ${target[@]}
+Subnet mask  : ${mask[@]}
+CIDR         : /$cidr
+Network      : ${network[@]}
+First Host   : ${network[@]:0:3} $(( ${network[3]}+1 ))
+Last Host    : ${lasthost[@]}
+Broadcast    : ${broadcast[@]}
+Next Network : ${next[@]}"""
