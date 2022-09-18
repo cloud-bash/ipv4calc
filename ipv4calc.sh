@@ -1,6 +1,12 @@
 #!/bin/bash
 
 # This script returns the network, first and last hosts, broadcast and the next network address
+
+# To run the script, the syntax should be:
+# ./ipv4calc.sh [IP address] [subnet mask]
+# 1st argument [$1] = IPv4 address
+# 2nd argument [$2]= subnet mask
+
 # The information will be provided in the following format
 
 # echo """Target       : ${target[@]}
@@ -12,12 +18,6 @@
 # Last Host    : ${lasthost[@]}
 # Broadcast    : ${broadcast[@]}
 # Next Network : ${next[@]}"""
-
-
-# To run the script, the syntax should be:
-# ./ipv4calc.sh [IP address] [subnet mask]
-# 1st argument [$1] = any valid IPv4 address
-# 2nd argument [$2]= any valid subnet mask
 
 # initialize variables
 
@@ -103,6 +103,7 @@ for i in ${BASH_REMATCH[@]:1:4}; do
                     ((w--))
                     # increment the previous octet by one
                     ((next[$w]++))
+
                 fi    
             fi
             # this octet becomes 0
@@ -150,7 +151,13 @@ function increment() {
         if [[ ${next[$i]} == 256 ]]; then
             # increment previous octet
             ((next[$i-1]++))
-            # current octet becomes 0
+            if [[ ${next[$i-1]} == 256 ]]; then
+                ((next[i-2]++))
+                # increment preveious octet
+                ((next[i-1]=0))
+                # this octet becomes zero
+            fi    
+            # this octet becomes 0
             ((next[$i]=0))
         fi
 }
