@@ -6,6 +6,7 @@
 # echo """Target       : ${target[@]}
 # Subnet mask  : ${mask[@]}
 # CIDR         : /$cidr
+# of Hosts     : $(( 2**((32-cidr))-2 ))
 # Network      : ${network[@]}
 # First Host   : ${network[@]:0:3} $(( ${network[3]}+1 ))
 # Last Host    : ${lasthost[@]}
@@ -68,14 +69,18 @@ for i in ${BASH_REMATCH[@]:1:4}; do
         broadcast+=("$(( nm-1 ))")
         case $x in
             "1")
-            broadcast+=("255 255")
+            broadcast+=("255" "255")
+            lasthost+=(${broadcast[@]:0:3} $(( broadcast[3]-1 )))
+            # if this octet index == 1, then the two remaining broadcast octets = 255
             ;;
             "2")
             broadcast+=("255")
             lasthost+=(${broadcast[@]:0:3} $(( broadcast[3]-1 )))
+            # if this octet index == 2, then the last remaining broadcast octet = 255
             ;;
             "3")
             lasthost+=(${broadcast[@]:0:3} $(( broadcast[3]-1 )))
+            # if this octet index == 3, then the broadcast is already calculated
             ;;
         esac
         # if nm reaches 256, increment the last octet by one and make this octet 0
@@ -178,6 +183,7 @@ esac
 echo """Target       : ${target[@]}
 Subnet mask  : ${mask[@]}
 CIDR         : /$cidr
+# of Hosts   : $(( 2**((32-cidr))-2 ))
 Network      : ${network[@]}
 First Host   : ${network[@]:0:3} $(( ${network[3]}+1 ))
 Last Host    : ${lasthost[@]}
