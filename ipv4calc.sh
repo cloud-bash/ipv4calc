@@ -51,62 +51,62 @@ for i in ${BASH_REMATCH[@]:1:4}; do
         # next network address will match unless incremented by next octet reaching 256
         next+=("${target[x]}")
         # 8 bits added to cidr
-        (( cidr+=8 ))
+        ((cidr+=8))
         # increment octet index counter
-        (( x++ ))
+        ((x++))
     elif [[ $i > 0 && $i < 255 ]]; then
         # m - magic number = number of addresses per network
-        (( m=256-i ))
+        ((m=256-i))
         # d = floor divide current octet of target by the magic number (bash shell floored divides integers automatically)
-        d=$(( ${target[$x]}/m ))
-        # n = network value for this octet
-        n=$(( d*m ))
+        d=$((${target[$x]}/m))
+        # n = d times magic number = network value for this octet
+        n=$((d*m))
         # add n to network octet list
         network+=("$n")
         # network octet plus magic number = next network octet
         # add n + m to next network octet list
-        (( nm=n+m ))
-        broadcast+=("$(( nm-1 ))")
+        ((nm=n+m))
+        broadcast+=("$((nm-1))")
         case $x in
             "1")
             broadcast+=("255" "255")
-            lasthost+=(${broadcast[@]:0:3} $(( broadcast[3]-1 )))
+            lasthost+=(${broadcast[@]:0:3} $((broadcast[3]-1)))
             # if this octet index == 1, then the two remaining broadcast octets = 255
             ;;
             "2")
             broadcast+=("255")
-            lasthost+=(${broadcast[@]:0:3} $(( broadcast[3]-1 )))
+            lasthost+=(${broadcast[@]:0:3} $((broadcast[3]-1)))
             # if this octet index == 2, then the last remaining broadcast octet = 255
             ;;
             "3")
-            lasthost+=(${broadcast[@]:0:3} $(( broadcast[3]-1 )))
+            lasthost+=(${broadcast[@]:0:3} $((broadcast[3]-1)))
             # if this octet index == 3, then the broadcast is already calculated
             ;;
         esac
         # if nm reaches 256, increment the last octet by one and make this octet 0
         if [[ $nm == 256 ]]; then
             # this octet becomes 0
-            (( next[$x] = 0 ))
+            ((next[$x]=0))
             # w = index of previous octet
-            (( w=x-1 ))
+            ((w=x-1))
             # increment the previous octet by one
-            (( next[$w]++ ))
+            ((next[$w]++))
             if [[ ${next[$w]} == 256 ]]; then
-                (( next[$w] = 0 ))
+                ((next[$w]=0))
                 # w = index of previous octet
-                (( w-- ))
+                ((w--))
                 # increment the previous octet by one
-                (( next[$w]++ ))
+                ((next[$w]++))
                 if [[ ${next[$w]} == 256 ]]; then
-                    (( next[$w] = 0 ))
+                    ((next[$w]=0))
                     # w = index of previous octet
-                    (( w-- ))
+                    ((w--))
                     # increment the previous octet by one
-                    (( next[$w]++ ))
+                    ((next[$w]++))
                 fi    
             fi
-            # make this octet 0
-            (( next[$w+1] = 0 ))
+            # this octet becomes 0
+            ((next[$w+1]=0))
         else
             next+=("$nm")
         fi
@@ -115,25 +115,25 @@ for i in ${BASH_REMATCH[@]:1:4}; do
         # add correct number of bits to cidr
         # TODO: Implement bitwise operator to derive cidr?
             "128")
-                (( cidr+=1 ))
+                ((cidr+=1))
                 ;;
             "192")
-                (( cidr+=2 ))
+                ((cidr+=2))
                 ;;
             "224")
-                (( cidr+=3 ))
+                ((cidr+=3))
                 ;;
             "240")
-                (( cidr+=4 ))
+                ((cidr+=4))
                 ;;
             "248")
-                (( cidr+=5 ))
+                ((cidr+=5))
                 ;;
             "252")
-                (( cidr+=6 ))
+                ((cidr+=6))
                 ;;
             "254")
-                (( cidr+=7 ))
+                ((cidr+=7))
                 ;;
         esac
     elif [[ $i == 0 ]]; then
@@ -144,14 +144,14 @@ done
 
 function increment() {
         # get octet index from cidr
-        (( i = cidr * 4 / 32 - 1 ))
+        ((i=cidr*4/32-1))
         # increment this octet for correct next network address
-        (( next[$i]++ ))
+        ((next[$i]++))
         if [[ ${next[$i]} == 256 ]]; then
             # increment previous octet
-            (( next[$i-1]++ ))
+            ((next[$i-1]++))
             # current octet becomes 0
-            (( next[$i]=0 ))
+            ((next[$i]=0))
         fi
 }
 
@@ -183,9 +183,9 @@ esac
 echo """Target       : ${target[@]}
 Subnet mask  : ${mask[@]}
 CIDR         : /$cidr
-# of Hosts   : $(( 2**((32-cidr))-2 ))
+# of Hosts   : $((2**((32-cidr))-2))
 Network      : ${network[@]}
-First Host   : ${network[@]:0:3} $(( ${network[3]}+1 ))
+First Host   : ${network[@]:0:3} $((${network[3]}+1))
 Last Host    : ${lasthost[@]}
 Broadcast    : ${broadcast[@]}
 Next Network : ${next[@]}"""
