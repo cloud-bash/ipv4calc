@@ -12,12 +12,16 @@
 target=()
 # subnet mask from $2
 mask=()
-# network address for our mystery IP address
-network=()
-# next network address
-next=()
 # will be calculated based on subnet mask
 cidr=0
+# network address for our mystery IP address
+network=()
+# last host address
+lasthost=()
+# broadcast address for our mystery IP address
+broadcast=()
+# next network address
+next=()
 # x=octet index counter
 x=0
 
@@ -39,6 +43,8 @@ for i in ${BASH_REMATCH[@]:1:4}; do
         network+=("${target[x]}")
         # append this octet to the next network address variable
         next+=("${target[x]}")
+        # append this octet to the broadcast address variable
+        broadcast+=("${target[x]}")
         # 8 bits added to cidr
         (( cidr+=8 ))
         # increment octet index counter
@@ -122,19 +128,32 @@ function increment() {
 case $cidr in
     "24")
         increment
+        # broadcast will be 255 for 4th octet
+        broadcast+=("255")
+        # last host = x.x.x.254
+        lasthost=(${network[@]:0:3} 254)
     ;;
     "16")
         increment
+        # broadcast will be x.x.255.255
+        broadcast+=("255 255")
+        # last host = x.x.255.254
+        lasthost=(${network[@]:0:2} 255 254)
     ;;
     "8")
         increment
+        # broadcast will be x.255.255.255
+        broadcast+=("255 255 255")
+        # last host = x.255.255.254
+        lasthost=(${network[@]:0:1} 255 255 254)
     ;;
 esac
+
 echo "Target Address: ${target[@]}"
 echo "Subnet mask: ${mask[@]}"
 echo "CIDR: /"$cidr
 echo "Network Address: ${network[@]}"
 echo "First Host Address: ${network[@]:0:3} $(( ${network[3]}+1 ))"
-# # echo "Last Host Address: $network"
-# # echo "Broadcast Address: $network"
+echo "Last Host Address: ${lasthost[@]}"
+echo "Broadcast Address: ${broadcast[@]}"
 echo "Next Network Address: ${next[@]}"
