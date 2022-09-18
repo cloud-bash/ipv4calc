@@ -1,29 +1,36 @@
 #!/bin/bash
 
-# Take an IP and subnet mask (ex. 172.23.13.45 255.255.224.0)
-# And return the Network address, the first and last hosts, the broadcast and the next network address.
-# To run the script, the syntax should be: ./ipv4calc.sh [IP address] [subnet mask]
-# 1st argument [$1] = random, or any valid IP address
+# This script returns the network, first and last hosts, broadcast and the next network address
+# The information will be provided in the following format
+
+# echo """Target       : ${target[@]}
+# Subnet mask  : ${mask[@]}
+# CIDR         : /$cidr
+# Network      : ${network[@]}
+# First Host   : ${network[@]:0:3} $(( ${network[3]}+1 ))
+# Last Host    : ${lasthost[@]}
+# Broadcast    : ${broadcast[@]}
+# Next Network : ${next[@]}"""
+
+
+# To run the script, the syntax should be:
+# ./ipv4calc.sh [IP address] [subnet mask]
+# 1st argument [$1] = any valid IPv4 address
 # 2nd argument [$2]= any valid subnet mask
 
-# initialize variables for later use
+# initialize variables
 
-# given random ip address + subnet mask (taken from the user arguments $1 and $2)
 target=()
-# subnet mask from $2
 mask=()
-# will be calculated based on subnet mask
 cidr=0
-# network address for our mystery IP address
 network=()
-# last host address
 lasthost=()
-# broadcast address for our mystery IP address
 broadcast=()
-# next network address
 next=()
-# x=octet index counter
+# counter for octet index
 x=0
+
+# ${arr[@]:s:n}	Retrieve n elements starting at index s
 
 # break up the IP address into a list of octets
 [[ "$1" =~ ([0-9]+).([0-9]+).([0-9]+).([0-9]+) ]]
@@ -31,39 +38,34 @@ for i in ${BASH_REMATCH[@]:1:4}; do
     target+=("$i")
 done
 
-# get CIDR from subnet mask using regex groups
+# break up the subnet mask into a list of octets
 [[ "$2" =~ ([0-9]+).([0-9]+).([0-9]+).([0-9]+) ]]
-# ${arr[@]:s:n}	Retrieve n elements starting at index s
 for i in ${BASH_REMATCH[@]:1:4}; do
-# For the current octet: derive the network, broadcast and next network addresses
     mask+=("$i")
     if [[ $i == 255 ]]; then
-     # if this subnet mask octet is 255,
-        # the 'network' matches our 'target' for this octet
+        # network matches target for this octet
         network+=("${target[x]}")
-        # the 'broadcast' matches our 'target' for this octet
+        # broadcast matches target for this octet
         broadcast+=("${target[x]}")
-        # the next network address will not change unless incremented later
+        # next network address will match unless incremented by next octet reaching 256
         next+=("${target[x]}")
-        # 8 bits added to cidr because it's 255 for this octet
+        # 8 bits added to cidr
         (( cidr+=8 ))
         # increment octet index counter
         (( x++ ))
     elif [[ $i > 0 && $i < 255 ]]; then
-    # else if the current octet is between 0 or 255
-        # m - magic number
+        # m - magic number = number of addresses per network
         (( m=256-i ))
-        # bash will use floored division automatically bc integer data type
-        # d = floor divide current octet of target by the magic number
+        # d = floor divide current octet of target by the magic number (bash shell floored divides integers automatically)
         d=$(( ${target[$x]}/m ))
-        # z = network value for this octet
-        z=$(( d*m ))
-        # add z to network octet list
-        network+=("$z")
-        # then the network value plus the magic number gives us our "next-network" octet value
-        # add z + m to next network octet list
-        (( nz=z+m ))
-        broadcast+=("$(( nz-1 ))")
+        # n = network value for this octet
+        n=$(( d*m ))
+        # add n to network octet list
+        network+=("$n")
+        # network octet plus magic number = next network octet
+        # add n + m to next network octet list
+        (( nm=n+m ))
+        broadcast+=("$(( nm-1 ))")
         case $x in
             "1")
             broadcast+=("255 255")
@@ -76,8 +78,8 @@ for i in ${BASH_REMATCH[@]:1:4}; do
             lasthost+=(${broadcast[@]:0:3} $(( broadcast[3]-1 )))
             ;;
         esac
-        # if nz reaches 256, increment the last octet by one and make this octet 0
-        if [[ $nz == 256 ]]; then
+        # if nm reaches 256, increment the last octet by one and make this octet 0
+        if [[ $nm == 256 ]]; then
             # this octet becomes 0
             (( next[$x] = 0 ))
             # w = index of previous octet
@@ -101,14 +103,11 @@ for i in ${BASH_REMATCH[@]:1:4}; do
             # make this octet 0
             (( next[$w+1] = 0 ))
         else
-            next+=("$nz")
+            next+=("$nm")
         fi
-        # increment octet index counter
         (( x++ ))
-        # add correct number of bits for cidr
-        # 128, 192, 224, 240, 248, 252, 254
-        # oct - 128 > 0 then cidr+=1...etc.
         case $i in
+        # add correct number of bits to cidr
         # TODO: Implement bitwise operator to derive cidr?
             "128")
                 (( cidr+=1 ))
@@ -151,7 +150,7 @@ function increment() {
         fi
 }
 
-# for /8,/16,/24 increment the respective octet to find the next network address
+# for cidr /8,/16,/24 increment the respective octet to find the next network address
 case $cidr in
     "24")
         increment
