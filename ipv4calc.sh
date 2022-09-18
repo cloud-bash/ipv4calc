@@ -10,6 +10,8 @@
 
 # given random ip address + subnet mask (taken from the user arguments $1 and $2)
 target=()
+# subnet mask from $2
+mask=()
 # network address for our mystery IP address
 network=()
 # next network address
@@ -29,6 +31,7 @@ done
 [[ "$2" =~ ([0-9]+).([0-9]+).([0-9]+).([0-9]+) ]]
 # ${arr[@]:s:n}	Retrieve n elements starting at index s
 for i in ${BASH_REMATCH[@]:1:4}; do
+    mask+=("$i")
     # if this subnet mask octet is 255,
     if [[ $i == 255 ]]; then
         # the network matches our target for this octet
@@ -40,6 +43,7 @@ for i in ${BASH_REMATCH[@]:1:4}; do
         (( cidr+=8 ))
         # increment octet index counter
         (( x++ ))
+        # if the current subnet mask octet we're iterating over is not equal to 0 or 255...
     elif [[ $i > 0 && $i < 255 ]]; then
         # m - magic number
         (( m=256-i ))
@@ -50,16 +54,19 @@ for i in ${BASH_REMATCH[@]:1:4}; do
         z=$(( d*m ))
         # add z to network octet list
         network+=("$z")
-        # add z + m -1 to next network octet list
+        # then the network value plus the magic number gives us our "next-network" octet value
+        # add z + m to next network octet list
         (( nz=z+m ))
         # if nz reaches 256, increment the last octet by one and make this octet 0
         if [[ $nz == 256 ]]; then
+            # this octet becomes 0
+            (( next[$x] = 0 ))
             # w = index of previous octet
-            (( w=x-1 ))
-            # increment the last octet by one
+            (( w=x-2 ))
+            # increment the previous octet by one
             (( next[$w] = ${next[$w]}+1 ))
             # make this octet 0
-            next+=("0")
+            (( next[$w+1] = 0 ))
         else
             next+=("$nz")
         fi
@@ -102,6 +109,13 @@ function increment() {
         (( i = cidr * 4 / 32 - 1 ))
         # increment this octet for correct next network address
         (( next[$i]++ ))
+        if [[ ${next[$i]} == 256 ]]; then
+            # increment previous octet
+            (( next[$i-1]++ ))
+            # current octet becomes 0
+            (( next[$i]=0 ))
+        fi
+        echo ${next[0]}
 }
 
 # for /8,/16,/24 increment the respective octet to find the next network address
@@ -117,9 +131,10 @@ case $cidr in
     ;;
 esac
 echo "Target Address: ${target[@]}"
+echo "Subnet mask: ${mask[@]}"
 echo "CIDR: /"$cidr
 echo "Network Address: ${network[@]}"
 echo "First Host Address: ${network[@]:0:3} $(( ${network[3]}+1 ))"
-# echo "Last Host Address: $network"
-# echo "Broadcast Address: $network"
+# # echo "Last Host Address: $network"
+# # echo "Broadcast Address: $network"
 echo "Next Network Address: ${next[@]}"
