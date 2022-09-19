@@ -1,23 +1,9 @@
 #!/bin/bash
 
-# This script returns the network, first and last hosts, broadcast and the next network address
-
 # To run the script, the syntax should be:
 # ./ipv4calc.sh [IP address] [subnet mask]
-# 1st argument [$1] = IPv4 address
-# 2nd argument [$2]= subnet mask
 
-# The information will be provided in the following format
-
-# echo """Target       : ${target[@]}
-# Subnet mask  : ${mask[@]}
-# CIDR         : /$cidr
-# of Hosts     : $(( 2**((32-cidr))-2 ))
-# Network      : ${network[@]}
-# First Host   : ${network[@]:0:3} $(( ${network[3]}+1 ))
-# Last Host    : ${lasthost[@]}
-# Broadcast    : ${broadcast[@]}
-# Next Network : ${next[@]}"""
+# Script returns the network, first host, last host, broadcast and the next network address
 
 # initialize variables
 
@@ -143,25 +129,6 @@ for i in ${BASH_REMATCH[@]:1:4}; do
     fi
 done
 
-function increment() {
-        # get octet index from cidr
-        ((i=cidr*4/32-1))
-        # increment this octet for correct next network address
-        ((next[$i]++))
-        if [[ ${next[$i]} == 256 ]]; then
-            # increment previous octet
-            ((next[$i-1]++))
-            if [[ ${next[$i-1]} == 256 ]]; then
-                ((next[i-2]++))
-                # increment preveious octet
-                ((next[i-1]=0))
-                # this octet becomes zero
-            fi    
-            # this octet becomes 0
-            ((next[$i]=0))
-        fi
-}
-
 # for cidr /8,/16,/24 increment the respective octet to find the next network address
 case $cidr in
     "24")
@@ -187,12 +154,46 @@ case $cidr in
     ;;
 esac
 
-echo """Target       : ${target[@]}
-Subnet mask  : ${mask[@]}
+# print function to insert "." between octets
+function print(){
+    add=""
+    i=0
+    for a in $@; do
+        add+="$a"
+        if [[ $i < 3 ]]; then
+            add+="."
+        fi
+        ((i++))
+    done
+    echo $add
+}
+
+# for incrementing octets in case of /8,/16/,24
+function increment() {
+        # get octet index from cidr
+        ((i=cidr*4/32-1))
+        # increment this octet for correct next network address
+        ((next[$i]++))
+        if [[ ${next[$i]} == 256 ]]; then
+            # increment previous octet
+            ((next[$i-1]++))
+            if [[ ${next[$i-1]} == 256 ]]; then
+                ((next[i-2]++))
+                # increment preveious octet
+                ((next[i-1]=0))
+                # this octet becomes zero
+            fi    
+            # this octet becomes 0
+            ((next[$i]=0))
+        fi
+}
+
+echo """Target       : `print ${target[@]}`
+Subnet mask  : `print ${mask[@]}`
 CIDR         : /$cidr
 # of Hosts   : $((2**((32-cidr))-2))
-Network      : ${network[@]}
-First Host   : ${network[@]:0:3} $((${network[3]}+1))
-Last Host    : ${lasthost[@]}
-Broadcast    : ${broadcast[@]}
-Next Network : ${next[@]}"""
+Network      : `print ${network[@]}`
+First Host   : `print ${network[@]:0:3}`$((${network[3]}+1))
+Last Host    : `print ${lasthost[@]}`
+Broadcast    : `print ${broadcast[@]}`
+Next Network : `print ${next[@]}`"""
