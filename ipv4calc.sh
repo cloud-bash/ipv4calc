@@ -2,6 +2,7 @@
 
 # To run the script, the syntax should be:
 # ./ipv4calc.sh [IP address] [subnet mask]
+# ./ipv4calc.sh 168.192.10.205 255.255.240.0  <<< Example Usage
 
 # Script returns the network, first host, last host, broadcast and the next network address
 
