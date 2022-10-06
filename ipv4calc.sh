@@ -130,6 +130,26 @@ for i in ${BASH_REMATCH[@]:1:4}; do
     fi
 done
 
+# for incrementing octets in case of /8,/16/,24
+function increment() {
+        # get octet index from cidr
+        ((i=cidr*4/32-1))
+        # increment this octet for correct next network address
+        ((next[$i]++))
+        if [[ ${next[$i]} == 256 ]]; then
+            # increment previous octet
+            ((next[$i-1]++))
+            if [[ ${next[$i-1]} == 256 ]]; then
+                ((next[i-2]++))
+                # increment preveious octet
+                ((next[i-1]=0))
+                # this octet becomes zero
+            fi    
+            # this octet becomes 0
+            ((next[$i]=0))
+        fi
+}
+
 # for cidr /8,/16,/24 increment the respective octet to find the next network address
 case $cidr in
     "24")
@@ -169,25 +189,25 @@ function print(){
     echo $add
 }
 
-# for incrementing octets in case of /8,/16/,24
-function increment() {
-        # get octet index from cidr
-        ((i=cidr*4/32-1))
-        # increment this octet for correct next network address
-        ((next[$i]++))
-        if [[ ${next[$i]} == 256 ]]; then
-            # increment previous octet
-            ((next[$i-1]++))
-            if [[ ${next[$i-1]} == 256 ]]; then
-                ((next[i-2]++))
-                # increment preveious octet
-                ((next[i-1]=0))
-                # this octet becomes zero
-            fi    
-            # this octet becomes 0
-            ((next[$i]=0))
-        fi
-}
+# # for incrementing octets in case of /8,/16/,24
+# function increment() {
+#         # get octet index from cidr
+#         ((i=cidr*4/32-1))
+#         # increment this octet for correct next network address
+#         ((next[$i]++))
+#         if [[ ${next[$i]} == 256 ]]; then
+#             # increment previous octet
+#             ((next[$i-1]++))
+#             if [[ ${next[$i-1]} == 256 ]]; then
+#                 ((next[i-2]++))
+#                 # increment preveious octet
+#                 ((next[i-1]=0))
+#                 # this octet becomes zero
+#             fi    
+#             # this octet becomes 0
+#             ((next[$i]=0))
+#         fi
+# }
 
 echo """Target       : `print ${target[@]}`
 Subnet mask  : `print ${mask[@]}`
